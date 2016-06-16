@@ -7,9 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-
 import org.joda.time.DateTime;
 import org.opensaml.DefaultBootstrap;
 import org.opensaml.common.SAMLVersion;
@@ -52,7 +49,10 @@ import org.opensaml.xml.signature.Signer;
 import org.opensaml.xml.signature.impl.SignatureBuilder;
 import org.opensaml.xml.util.XMLHelper;
 import org.w3c.dom.Element;
-
+import org.opensaml.xml.ConfigurationException;
+import org.opensaml.xml.security.BasicSecurityConfiguration;
+import org.opensaml.Configuration;
+import org.opensaml.xml.signature.SignatureConstants;
 
 public class SamlAssertionProducer {
 
@@ -65,7 +65,13 @@ public class SamlAssertionProducer {
 		
 		try {
 			DefaultBootstrap.bootstrap();
-			
+
+                        // By Default openSAML uses SHA1
+                        // Change this to SHA256
+                        // override default security cofigurations
+                        overrideDefaultSecurityConfigurations();
+ 
+
 			Signature signature = createSignature();
 			Status status = createStatus();
 			Issuer responseIssuer = null;
@@ -109,6 +115,31 @@ public class SamlAssertionProducer {
 			t.printStackTrace();
 			return null;
 		}
+	}
+
+        /*
+         * Change the default DigestMethod Algorithm from sha1 to sha256
+         * Change the default SignatureMethod Algorithm from rsa-sha1 to rsa-sha256
+         *
+         */
+	private void overrideDefaultSecurityConfigurations() {
+
+		BasicSecurityConfiguration securityConfiguration = (BasicSecurityConfiguration) Configuration.getGlobalSecurityConfiguration();
+
+ 		// Asymmetric key algorithms
+		securityConfiguration.registerSignatureAlgorithmURI("RSA", SignatureConstants.ALGO_ID_SIGNATURE_RSA_SHA256);
+		securityConfiguration.registerSignatureAlgorithmURI("DSA", SignatureConstants.ALGO_ID_SIGNATURE_DSA);
+		securityConfiguration.registerSignatureAlgorithmURI("EC", SignatureConstants.ALGO_ID_SIGNATURE_ECDSA_SHA256);
+
+		// HMAC algorithms
+		securityConfiguration.registerSignatureAlgorithmURI("AES", SignatureConstants.ALGO_ID_MAC_HMAC_SHA256);
+		securityConfiguration.registerSignatureAlgorithmURI("DESede", SignatureConstants.ALGO_ID_MAC_HMAC_SHA256);
+
+		// Other signature-related params
+		securityConfiguration.setSignatureCanonicalizationAlgorithm(SignatureConstants.ALGO_ID_C14N_EXCL_OMIT_COMMENTS);
+		securityConfiguration.setSignatureHMACOutputLength(null);
+		securityConfiguration.setSignatureReferenceDigestMethod(SignatureConstants.ALGO_ID_DIGEST_SHA256);
+
 	}
 
 	public String getPrivateKeyLocation() {
